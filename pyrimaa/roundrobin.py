@@ -43,7 +43,7 @@ def format_time(seconds):
         fmt_tm.append(f"{hours}h")
     if minutes or fmt_tm:
         fmt_tm.append(f"{minutes}m")
-    fmt_tm.append(f"{seconds}s")
+    fmt_tm.append(f"{int(seconds)}s")
     return "".join(fmt_tm)
 
 
