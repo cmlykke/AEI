@@ -1,11 +1,11 @@
 
-/////////////////////////// instalaltion:
+instalaltion:
 
-//////////////// clone the current AEI repo.
+* make sure python is installed
 
+* clone the current AEI repo.
 
-/////////////////////////////////////////////// run the turnament
-
+* run the turnament:
 
 cd C:\Users\CMLyk\PycharmProjects\AEI
 
