@@ -34,7 +34,3 @@ env/
 .vscode/
 .idea/
 *.iml
-
-# Local AI binaries (do not commit executables)
-arimaa-ai-location/*.exe
-!arimaa-ai-location/arimaa-ai-location-info.txt
