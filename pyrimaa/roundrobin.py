@@ -113,11 +113,30 @@ def get_config(args=None):
             args.rounds = config.getint("global", "rounds")
         except NoOptionError:
             pass
+        if args.rounds is None and config.has_section("roundrobin"):
+            # Backwards/alternate config layout support
+            try:
+                args.rounds = config.getint("roundrobin", "rounds")
+            except NoOptionError:
+                pass
+
     if args.timecontrol is None:
+        # Primary location (existing behavior)
         try:
             args.timecontrol = config.get("global", "timecontrol")
         except NoOptionError:
             pass
+        # Alternate location / alias commonly used in configs
+        if args.timecontrol is None and config.has_section("roundrobin"):
+            try:
+                args.timecontrol = config.get("roundrobin", "timecontrol")
+            except NoOptionError:
+                pass
+            if args.timecontrol is None:
+                try:
+                    args.timecontrol = config.get("roundrobin", "tctl")
+                except NoOptionError:
+                    pass
 
     if args.strict_setup is notset:
         try:
@@ -158,15 +177,17 @@ def main(args=None):
         print("Number of rounds not specified, running 1 round.")
         cfg.rounds = 1
 
-    try:
-        tctl_str = cfg.timecontrol
-        if tctl_str.lower() == "none":
+    # Defensive: cfg.timecontrol can legitimately be None
+    tctl_str = cfg.timecontrol
+    if tctl_str is None:
+        timecontrol = None
+    else:
+        tctl_str = str(tctl_str).strip()
+        if not tctl_str or tctl_str.lower() == "none":
             timecontrol = None
         else:
             timecontrol = TimeControl(tctl_str)
             print(f"At timecontrol {tctl_str}")
-    except NoOptionError:
-        timecontrol = None
 
     if cfg.global_options:
         print("Giving these settings to all bots:")
