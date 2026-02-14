@@ -3,10 +3,10 @@ import re
 
 def _parse_timefield(full_field, start_unit="m"):
     unit_order = " smhd"
-    units = {"s": 1, "m": 60, "h": 60 * 60, "d": 60 * 60 * 24}
+    units = {"ms": 0.001, "s": 1, "m": 60, "h": 60 * 60, "d": 60 * 60 * 24}
     num_re = re.compile("[0-9]+")
     units[":"] = units[start_unit]
-    seconds = 0
+    seconds = 0.0
     field = full_field
     if field.startswith(":"):
         field = "0" + field
@@ -14,24 +14,40 @@ def _parse_timefield(full_field, start_unit="m"):
     while nmatch:
         end = nmatch.end()
         num = int(field[:end])
+
         if len(field) == end or field[end] == ":":
             sep = start_unit
             start_unit = unit_order[unit_order.find(start_unit) - 1]
+            advance = 1
         else:
-            sep = field[end]
+            # Support multi-character unit "ms"
+            if field[end] == "m" and end + 1 < len(field) and field[end + 1] == "s":
+                sep = "ms"
+                advance = 2
+            else:
+                sep = field[end]
+                advance = 1
+
         if sep not in units:
             raise ValueError(f"Invalid time unit encountered {sep}")
         seconds += num * units[sep]
+
         if ":" in units:
             del units[":"]
-        field = field[end + 1 :]
+        field = field[end + advance :]
         nmatch = num_re.match(field)
+
     if field:
         raise ValueError(f"Invalid time field encountered {full_field}")
     return seconds
 
 
 def _time_str(seconds):
+    # Show milliseconds for sub-second times (useful for fast test configs)
+    if 0 < seconds < 1:
+        ms = int(round(seconds * 1000))
+        return f"{ms}ms"
+
     units = [("d", 60 * 60 * 24), ("h", 60 * 60), ("m", 60)]
     out = []
     for tag, length in units:
