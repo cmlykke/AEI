@@ -1,0 +1,211 @@
+2026-02-14_2250
+
+## Me
+i want to create a deep-learning AI. either a "alphago-lee" like bot, tained on strong human games,
+or a pure self learning bot like "alphago-master" or a hybrid
+metween one of those and traditional heuristic techniques like bot sharp.
+
+i am doing this for a university AI project, to learn about machine learning and AI.
+
+Please provide me with a detailed plan
+
+## AI Assistant
+
+0) First, set the target clearly (what you’re building)
+You’re describing three families of systems:
+AlphaGo Lee–style (supervised learning + search)
+Train a policy network on strong human (or strong engine) moves.
+Optionally train a value network on game outcomes.
+Use MCTS guided by those networks.
+AlphaGo Zero/Master–style (pure self-play RL)
+Start from random play.
+Learn policy + value purely from self-play using MCTS + neural net improvement loop.
+Hybrid (heuristics + NN + search)
+Add “classic engine” ingredients: tactical move generation, pruning rules, evaluation heuristics.
+This can massively reduce compute and training instability—very practical for a university project.
+For a university project with limited compute/time, the most realistic and educational path is usually:
+Hybrid or Lee-style bootstrapped into self-play (supervised pretrain → self-play fine-tune).
+
+1) Choose the game + scope (reduce complexity early)
+A. Full game vs simplified variant
+If the game is complex (e.g., large branching factor, many legal moves, long horizons), you’ll want a staged approach:
+Milestone ladder:
+Learn to play legal moves + end-of-game detection reliably.
+Beat a random player.
+Beat a simple heuristic baseline.
+Bootstrapped training (imitate strong moves).
+Self-play improvement loop.
+B. Define constraints up front
+Write these down in your project plan:
+Compute budget: e.g., “single GPU” or “CPU-only”.
+Training time: e.g., “2 weeks of experiments”.
+Evaluation method: win-rate, Elo, or match results against fixed baselines.
+Deliverables: trained model, reproducible scripts, report with ablations.
+
+2) Build a strong baseline first (so you can measure progress)
+Even if your end goal is deep learning, a baseline engine gives you:
+a sanity check (your pipeline is correct),
+a meaningful opponent,
+training data (if you do imitation).
+Baseline options (pick at least one):
+Random legal player (must exist—tests your move generation).
+Heuristic evaluation player
+Simple features + linear scoring: material, mobility, threats, goal proximity, etc.
+Shallow search
+Minimax/alpha-beta at depth 1–2 with heuristic eval, or
+Beam search over “reasonable moves” only.
+Deliverable: A baseline that is deterministic and reproducible, with a documented set of heuristics/features.
+
+3) Data representation (the make-or-break design choice)
+You need a representation that supports:
+fast conversion from game state → tensor,
+symmetry handling (if applicable),
+easy legality masking.
+A. State encoding
+Typical approach:
+Multi-plane binary/float tensor: shape like [C, H, W] (or analogous for non-grid games).
+Channels represent piece types, ownership, special states, move counters, repetition info, etc.
+If the game is not naturally a 2D grid, you can still:
+use a structured tensor (planes for locations),
+or use a graph representation (GNN) if the board is relational—though that’s more complex.
+B. Action encoding
+This is often harder than the state. You must define:
+a fixed action space (easy for chess-like moves),
+or a factorized action (e.g., select piece → select destination → optional modifiers),
+plus a legal move mask so the policy never selects illegal moves.
+Deliverable: A documented (state → tensor) and (move → index) mapping with tests:
+encode/decode round-trip,
+mask validity,
+speed benchmark.
+
+4) Neural network architecture (keep it modest)
+Recommended starting point (practical + standard)
+A shared “trunk” + two heads:
+Policy head outputs logits over actions.
+Value head outputs a scalar in [-1, 1] (loss target is game outcome from current player’s view).
+Architecture choices:
+ResNet-style CNN if board is grid-like.
+Small transformer if you can serialize the state into tokens (more work, can be powerful).
+Keep it small enough to train quickly (you want iteration speed).
+Deliverable: A model that can run inference fast enough for search (MCTS needs many evaluations).
+
+5) Learning path A: “AlphaGo Lee” (supervised first)
+This path is ideal if you have access to strong move data (human expert games or strong engine games).
+Step A1: Collect and clean games
+Parse game records into (state, expert_move) pairs.
+Optionally include (state, winner) for value learning.
+Split train/val/test by game (avoid leakage).
+Step A2: Train policy network (imitation)
+Loss: cross-entropy between predicted move distribution and expert move.
+Always apply legality mask during training.
+Metrics:
+top-1 / top-5 move accuracy,
+win-rate vs baseline when run with lightweight search (or even greedy).
+Step A3: Add value learning (optional)
+Train value head on final outcomes using states sampled from games.
+Or bootstrap from self-play later.
+Step A4: Add search (MCTS)
+Use policy logits as priors P(a|s).
+Use value as leaf evaluation V(s) instead of rollouts.
+Deliverable: A “supervised+MCTS” agent that already plays credibly.
+
+6) Learning path B: “AlphaGo Zero/Master” (pure self-play RL)
+This is conceptually clean but compute-hungry and easy to derail without careful engineering.
+Step B1: Implement self-play with MCTS
+For each self-play game:
+At each state, run MCTS guided by the current network.
+Produce:
+training target policy π = normalized visit counts from MCTS,
+training target value z = final outcome from the perspective of the player at that state.
+Step B2: Train on generated data
+Loss (typical AlphaZero):
+L = (z - v)^2 - πᵀ log p + c||θ||²
+Step B3: Evaluation gating (“new net must prove it’s better”)
+Play N games new model vs old model.
+Only promote if win-rate exceeds threshold (e.g., 55%).
+Step B4: Stabilization tricks (very important)
+Replay buffer (keep last K games).
+Dirichlet noise at root during self-play for exploration.
+Temperature schedule: higher early moves, lower later.
+Resign threshold carefully (or omit resign initially).
+Deliverable: A training loop that can show monotonic improvement vs fixed baselines.
+
+7) Hybrid approach (recommended for your situation)
+This tends to give the best “bang for buck” in a university setting.
+A strong hybrid recipe
+Heuristic move generator narrows branching factor:
+Generate only “plausible” moves (captures, threats, goal progress, defenses).
+Neural net evaluates + provides priors:
+Policy ranks candidate moves.
+Value estimates position strength.
+Shallow search:
+MCTS with fewer simulations, or
+alpha-beta over candidates with NN eval.
+Why this works
+You reduce compute dramatically.
+You can still write a report comparing:
+heuristic-only,
+NN-only (no heuristics),
+hybrid (both).
+Deliverable: Clear ablation results showing what each component contributes.
+
+8) Evaluation plan (don’t skip this)
+A. Metrics
+Win-rate over ≥200 games vs each baseline (or use confidence intervals).
+Elo estimate (optional but nice).
+Average game length, resign rate, illegal move rate (should be 0).
+Search speed: nodes/s, net evals/s.
+B. Test suite
+Fixed set of positions for regression tests (“tactical puzzles” style if applicable).
+Deterministic seeds for reproducibility.
+C. Experiment tracking
+Log at least:
+model version,
+training steps,
+dataset hash,
+win-rates and opponents,
+hyperparameters.
+
+9) Suggested project timeline (8–10 weeks)
+Weeks 1–2: Foundations
+Game interface stable, legal moves correct, game end detection correct.
+Random agent + simple heuristic agent.
+State/action encodings + legality mask.
+Weeks 3–4: Supervised policy (Lee-style start)
+Build dataset from strong games (human/engine).
+Train policy network.
+Evaluate: greedy policy vs baseline; then add shallow search.
+Weeks 5–7: Add value + MCTS
+Add value head and train (from outcomes or later self-play).
+Implement MCTS with priors + value.
+Evaluate: MCTS(policy-only) vs MCTS(policy+value).
+Weeks 8–10: Self-play fine-tuning (Master-style step)
+Self-play generation + replay buffer.
+Periodic evaluation gating.
+Run ablations:
+with/without heuristics,
+different simulation budgets,
+supervised-only vs self-play fine-tuned.
+
+10) What to write in the final report (high-scoring structure)
+Problem definition and why the game is challenging (branching factor, long-term tactics).
+Baselines (random, heuristic, search).
+Representation (state/action encoding + legality).
+Model (architecture, losses).
+Training regimes (supervised, self-play, hybrid).
+Search (MCTS details).
+Results with plots:
+win-rate vs time,
+ablations,
+compute cost.
+Failure modes (overfitting, collapse, exploration issues) and mitigations.
+Reproducibility (seeds, configs).
+
+11) Questions that decide the best plan for you (answer these and I’ll tailor it)
+Which game exactly are you targeting for this project?
+Do you have a dataset of strong games, or access to a strong engine to generate them?
+What compute do you have (CPU-only / single GPU / lab cluster)?
+How long is your project timeline (weeks)?
+Do you want the focus to be more on deep RL (self-play) or on engineering a strong bot (hybrid + search)?
+If you answer those, I can propose a concrete “minimum viable AlphaZero-style system” for your constraints, including what to implement first and what to postpone.
+
