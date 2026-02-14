@@ -80,7 +80,8 @@ def get_config(args=None):
     parser.add_argument("bots", nargs="*", help="Bots to use in tournament")
     args = parser.parse_args(args)
 
-    config = ConfigParser()
+    # Allow inline comments like: rounds = 10  ; comment
+    config = ConfigParser(inline_comment_prefixes=(";", "#"))
     if config.read(args.config) != [args.config]:
         raise ConfigError(f"Could not open '{args.config}'")
     args.ini = config
