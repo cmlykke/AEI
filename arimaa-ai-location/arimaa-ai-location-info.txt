@@ -1,0 +1,6 @@
+// use this folder for AI .exe files, such as 
+sharp2015.exe
+// OR
+simple_engine.exe
+
+//add them to .gitignore:
