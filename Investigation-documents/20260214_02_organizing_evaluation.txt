@@ -1,0 +1,111 @@
+
+## Me
+
+now that i can get a list of moves, i need to start on valuation-code to judge them for quality.
+please look online to see how other arimaa bots organize their valuation-code
+
+
+## AI Assistant
+
+## How other Arimaa bots tend to _organize_ evaluation / valuation code (based on published sources)
+A lot of strong Arimaa programs historically used a **hand-engineered evaluation function** with many features, plus either:
+- a **move-ordering / move-ranking** module (to reduce branching factor), and/or
+- a **search** (typically alpha-beta) that depends heavily on evaluation quality.
+
+Two good public write-ups that discuss this style and the kinds of terms used are:
+- David Wu’s thesis on move ranking and evaluation in Arimaa (he worked on strong Arimaa programs and discusses a hand-coded eval as a reference point) [[1]](https://arimaa.com/arimaa/papers/DavidWu/djwuthesis.pdf)
+- A paper on using game phase in Arimaa that discusses evaluation considerations and phase-dependent weighting [[2]](http://arimaa.com/arimaa/papers/VivekChoksi/game_phase_arimaa.pdf)
+
+They don’t give you a copy-paste engine, but they _do_ align well with what strong bots generally do: **feature-based, phase-aware scoring with trap/threat emphasis**.
+## A practical architecture you can mirror (clean, extensible, ML-friendly)
+### 1) Separate “valuation” into 3 layers
+**Layer A — feature extraction (fast, stateless):**
+- Input: `Position`
+- Output: a `FeatureVector` (dict/struct of numbers)
+
+Examples of features you’ll likely want:
+- material counts by piece type
+- trap control / trap danger (pieces on/adjacent to trap + defenders)
+- frozen pieces count / important frozen pieces
+- mobility (legal steps, or approximate mobility)
+- rabbit advancement / goal progress
+- immediate goal threats (near-promotion patterns)
+
+These categories are consistent with the kinds of factors discussed in Arimaa evaluation literature and strong program designs [[1]](https://arimaa.com/arimaa/papers/DavidWu/djwuthesis.pdf) [[2]](http://arimaa.com/arimaa/papers/VivekChoksi/game_phase_arimaa.pdf).
+**Layer B — scoring (weights + phase):**
+- Input: `FeatureVector`, `phase`
+- Output: single scalar score (e.g., positive = good for side to move)
+
+Key idea: **phase-dependent weights** (opening vs midgame vs endgame). The “game phase” idea is explicitly treated as important in Arimaa evaluation research [[2]](http://arimaa.com/arimaa/papers/VivekChoksi/game_phase_arimaa.pdf).
+**Layer C — move evaluation (apply move → evaluate result):**
+- Input: current , candidate moves `Position`
+- Output: ranked moves (or best move)
+
+This is the part you plug into your baseline bot:
+- for each `(steps, result_pos)` from `get_moves()`
+- compute `score(result_pos)`
+- pick argmax (or beam / depth-2 later)
+
+## What “valuation-code organization” looks like in many Arimaa bots (patterns)
+### Pattern 1: “Big linear eval” but broken into named terms
+A common engineering approach is:
+- `eval(pos) = Σ wi * fi(pos)`
+- but implemented as:
+    - `trap_terms.py`
+    - `mobility_terms.py`
+    - `material_terms.py`
+    - `goal_threat_terms.py`
+    - `freeze_terms.py`
+    - plus `phase.py` that blends weights
+
+This keeps it debuggable and lets you do ablations easily in your report (“remove trap terms → win rate drops”).
+### Pattern 2: Phase-aware blending (opening/mid/end)
+Instead of one static weight vector, use:
+- `score = (1-α)*score_opening + α*score_endgame`
+- where `α` is computed from a phase metric (material remaining, rabbits advanced, total captures, etc.)
+
+This is exactly the kind of “phase matters” structure discussed in Arimaa evaluation research [[2]](http://arimaa.com/arimaa/papers/VivekChoksi/game_phase_arimaa.pdf).
+### Pattern 3: “Eval + move ordering” as siblings
+In strong engines, evaluation isn’t used only at leaves; it’s also used to:
+- **rank candidate moves quickly**
+- choose a small set of “interesting” tactical moves (captures, trap threats, goal threats)
+
+Wu’s thesis focuses heavily on move ranking and learning/improving it, which reflects how central ordering is in Arimaa due to the huge move counts [[1]](https://arimaa.com/arimaa/papers/DavidWu/djwuthesis.pdf).
+## A concrete valuation roadmap (what you should implement first)
+### Step 1 (Week 1): Minimal eval that already “plays the game”
+Implement 5 terms only:
+1. **Terminal states**
+    - if goal win/loss or rabbit loss → return ±∞ (or a huge number)
+
+2. **Material**
+3. **Trap danger**
+    - penalize your pieces on trap squares or adjacent when under-defended
+
+4. **Mobility**
+5. **Rabbit advancement / goal proximity**
+
+That will already beat random and make your heuristic bot “look intentional.”
+### Step 2 (Week 2): Tactical safety & freeze
+Add:
+- frozen piece penalties
+- hanging/capturable piece heuristics
+- “trap control” more deeply (who controls squares around traps)
+
+### Step 3: Phase weights + calibration
+- add a `phase(pos)` function
+- maintain two weight sets (opening/endgame)
+- blend them smoothly
+
+## One key warning (so you don’t waste time)
+Arimaa move lists can be **thousands** of moves. If you do expensive evaluation per move (e.g., recomputing full move lists for mobility inside `eval`), it will crawl.
+So: organize your valuation code so you can have:
+- a **fast eval** (no nested move generation)
+- and later an **expensive eval** only for top-K moves (two-stage scoring)
+
+## If you want, I can do the next implementation step with you
+If you tell me where you want the evaluation module to live (e.g., `experimental_ai/utils/eval.py`) and what output you want (raw float score vs structured breakdown), I can propose a clean file layout like:
+- `experimental_ai/eval/features.py`
+- `experimental_ai/eval/weights.py`
+- `experimental_ai/eval/evaluator.py`
+
+…and a minimal first-pass evaluator that scores without being too slow. `Position`
