@@ -2,5 +2,3 @@
 sharp2015.exe
 // OR
 simple_engine.exe
-
-//add them to .gitignore:

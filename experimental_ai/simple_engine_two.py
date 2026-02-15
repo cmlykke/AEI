@@ -4,7 +4,7 @@ import sys
 import time
 from queue import Empty, Queue
 from threading import Event, Thread
-from experimental_ai.utils.eval_glue import get_eval_step_move as eval
+import experimental_ai.utils.eval_glue as eval_glue
 
 from pyrimaa.board import (
     BASIC_SETUP,
@@ -155,7 +155,7 @@ class AEIEngine:
             budget_s = self._compute_budget_s(pos.color)
             self.timekeeper.start_move(budget_s)
 
-            steps, result = eval.get_eval_step_move(pos, deadline=self.timekeeper.deadline)
+            steps, result = eval_glue.get_eval_step_move(pos, deadline=self.timekeeper.deadline)
             if steps is None:
                 move_str = ""
                 self.log("Warning: move requested when immobilized.")
