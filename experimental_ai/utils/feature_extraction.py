@@ -365,15 +365,10 @@ def evaluate_position(
     """
     end = pos.is_end_state()
     if end:
-        # end is 1 if side-to-move is winning, -1 if losing (per engine code).
-        # Convert that into "good for perspective".
-        # If pos.color == perspective and end == 1 => perspective has just won.
-        # If pos.color != perspective and end == 1 => the side to move (opponent) is winning.
-        winner_is_side_to_move = (end == 1)
-        winner_color = pos.color if winner_is_side_to_move else (pos.color ^ 1)
-        if winner_color == perspective:
-            return float("inf")
-        return float("-inf")
+        # `is_end_state()` uses absolute winner:
+        #   +1 => GOLD wins, -1 => SILVER wins
+        winner_color = Color.GOLD if end == 1 else Color.SILVER
+        return float("inf") if winner_color == perspective else float("-inf")
 
     score = 0.0
     score += weights.material * feature_material_counts(pos, perspective)

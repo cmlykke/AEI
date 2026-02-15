@@ -106,7 +106,9 @@ class AEIEngine:
         elif name == "tcmove" and value is not None:
             self.tc_move_s = float(value)
         elif name == "tcturntime" and value is not None:
-            self.tc_turntime_s = float(value)
+            tt = float(value)
+            # Convention: 0 means "no per-turn cap" in this controller codepath.
+            self.tc_turntime_s = None if tt <= 0.0 else tt
         elif name == "greserve" and value is not None:
             self.reserve_s[Color.GOLD] = float(value)
         elif name == "sreserve" and value is not None:
@@ -129,7 +131,8 @@ class AEIEngine:
 
         budget = inc + extra
 
-        if self.tc_turntime_s is not None:
+        # Only apply a cap if it is a positive number.
+        if self.tc_turntime_s is not None and self.tc_turntime_s > 0.0:
             budget = min(budget, float(self.tc_turntime_s))
 
         return budget
