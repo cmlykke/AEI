@@ -9,10 +9,7 @@ This module is responsible for:
 - combining those features into a scalar evaluation (“good for perspective”)
 - optionally exposing both cheap and expensive variants (e.g., legal-mobility on/off)
 
-It should NOT:
-- manage time controls / deadlines
-- choose between candidate moves (that’s `eval_selector.py` / `move_picker.py`)
-- generate moves (that’s the engine / pyrimaa, or sampling in `searchspace_reducer.py`)
+It should NOT manage time controls or pick moves.
 """
 
 """
@@ -40,7 +37,6 @@ from pyrimaa.board import (
     Color,
     Piece,
     Position,
-    TRAPS,
     TRAP_C3_BIT,
     TRAP_F3_BIT,
     TRAP_C6_BIT,

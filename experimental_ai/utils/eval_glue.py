@@ -1,13 +1,13 @@
-
 """
 eval_glue.py
 
-Thin integration layer (“glue”) between the AEI engine loop and the bot’s move-selection code.
+Public entry point for the bot logic in experimental_ai.utils.
 
-This module should:
-- expose a simple, stable entry point like `get_eval_step_move(pos, deadline=...)`
-- translate engine concerns (time/deadline, perspective) into calls to lower-level utilities
-- avoid heavy logic: move sampling, bucket selection, and search live in other modules
+Design rule:
+- Outside code (engines, scripts, tests) should only need to call functions from this file.
+- This module wires together evaluation + move picking, but delegates heavy work to:
+  - feature_extraction.py (position evaluation)
+  - move_picker.py (deadline-aware move selection)
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
-from pyrimaa.board import Color, Position
+from pyrimaa.board import Position
 
 from .feature_extraction import DEFAULT_WEIGHTS, EvalWeights, evaluate_position
 from .move_picker import PickerConfig, pick_move_anytime
@@ -25,18 +25,18 @@ Steps = Tuple[Tuple[int, int], ...]
 
 @dataclass(frozen=True)
 class GlueConfig:
-    # Evaluation behavior
+    """Configuration for the public move-selection entry point."""
     weights: EvalWeights = DEFAULT_WEIGHTS
     perspective: Optional[int] = None  # None => pos.color (side to move)
 
-    # Performance: legal mobility is expensive; keep False under time pressure
+    # Expensive evaluation toggle (keep False under tight time controls)
     legal_mobility: bool = False
 
     # Tie-breaking / variety
     random_ties: bool = True
     rng_seed: Optional[int] = None
 
-    # Search-space reducer controls
+    # Sampling controls (used by move_picker/searchspace_reducer)
     max_attempts_per_bucket: int = 96
 
 
@@ -47,8 +47,16 @@ def get_eval_step_move(
     deadline: float | None = None,
 ) -> tuple[Optional[Steps], Position]:
     """
-    Thin entry point used by the AEI engine.
-    Delegates the timed move sampling to move_picker.
+    Public move-selection entry point.
+
+    Returns:
+      (steps, result_position) like Position.get_rnd_step_move()
+      If immobilized / no legal moves: (None, pos)
+
+    Time behavior:
+      - if `deadline` is provided (time.perf_counter() absolute time), this call is anytime:
+        it returns the best move found so far when time runs out.
+      - if `deadline` is None, it still returns a legal move quickly (via move_picker fallback).
     """
     perspective = pos.color if config.perspective is None else config.perspective
 

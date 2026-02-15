@@ -17,7 +17,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import FrozenSet, Optional
 
-from pyrimaa.board import Color, Piece, Position, TRAPS, neighbors_of
+from pyrimaa.board import (
+    Color,
+    Piece,
+    Position,
+    TRAP_C3_BIT,
+    TRAP_F3_BIT,
+    TRAP_C6_BIT,
+    TRAP_F6_BIT,
+    neighbors_of,
+)
 
 
 @dataclass(frozen=True)
@@ -34,7 +43,7 @@ def _bit_to_index(bit: int) -> int:
 def _trap_region_square_indices() -> FrozenSet[int]:
     """Trap squares + their adjacent squares."""
     sq: set[int] = set()
-    for trap_bit in TRAPS:
+    for trap_bit in (TRAP_C3_BIT, TRAP_F3_BIT, TRAP_C6_BIT, TRAP_F6_BIT):
         sq.add(_bit_to_index(trap_bit))
         for n_bit in neighbors_of(trap_bit):
             sq.add(_bit_to_index(n_bit))
