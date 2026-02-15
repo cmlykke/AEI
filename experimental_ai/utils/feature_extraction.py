@@ -1,3 +1,4 @@
+from __future__ import annotations
 
 """
 feature_extraction.py
@@ -28,7 +29,6 @@ This is intentionally a *first pass* evaluator: it is heuristic and approximate.
 You can later tune weights, add phase scaling, and cache expensive computations.
 """
 
-from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Dict, Iterable, Mapping, Tuple
