@@ -4,6 +4,7 @@ import sys
 import time
 from queue import Empty, Queue
 from threading import Event, Thread
+from experimental_ai.utils.eval_glue import get_eval_step_move as eval
 
 from pyrimaa.board import (
     BASIC_SETUP,
@@ -110,7 +111,7 @@ class AEIEngine:
             setup_moves = setup.to_placing_move()
             move_str = setup_moves[pos.color][2:]
         else:
-            steps, result = pos.get_rnd_step_move()
+            steps, result = eval.get_eval_step_move(pos)
             if steps is None:
                 # we are immobilized, return an empty move
                 move_str = ""
