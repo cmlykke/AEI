@@ -1,3 +1,14 @@
+"""
+time_keeper.py
+
+Small utility for managing per-move time budgets safely.
+
+This module tracks an absolute `deadline` using a monotonic clock (`time.perf_counter()`),
+and applies a configurable safety margin to reduce the risk of time forfeits.
+
+It should remain minimal and generic: no move generation, no evaluation, no engine protocol.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

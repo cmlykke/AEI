@@ -1,3 +1,17 @@
+"""
+searchspace_reducer.py
+
+Fast, deadline-aware move sampling with optional constraints.
+
+This module provides utilities to quickly obtain *a legal move* that matches simple constraints
+(e.g., “only these pieces” or “only these squares”) without enumerating the entire move list.
+
+Key design goal:
+- be interruptible via `deadline` / `time_budget_s` so the engine can always move on time.
+
+Higher-level policies (bucket cycling, best-so-far selection) belong in `move_picker.py`.
+"""
+
 from __future__ import annotations
 
 import time

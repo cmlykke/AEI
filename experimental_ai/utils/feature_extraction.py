@@ -1,5 +1,21 @@
 
 """
+feature_extraction.py
+
+Position evaluation and feature engineering.
+
+This module is responsible for:
+- extracting fast, mostly-local heuristic features from a `pyrimaa.board.Position`
+- combining those features into a scalar evaluation (“good for perspective”)
+- optionally exposing both cheap and expensive variants (e.g., legal-mobility on/off)
+
+It should NOT:
+- manage time controls / deadlines
+- choose between candidate moves (that’s `eval_selector.py` / `move_picker.py`)
+- generate moves (that’s the engine / pyrimaa, or sampling in `searchspace_reducer.py`)
+"""
+
+"""
 Basic (fast-ish) feature extraction + move scoring for Arimaa positions.
 
 Design goals:

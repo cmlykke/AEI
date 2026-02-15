@@ -1,6 +1,15 @@
-## in Arimaa, the number of legal moves can go up to 200.000 in extreeme cases.
-## for this reason, it is nessasary to rankorder the heuristics,
-## so for most moves, only the least demanding tests gets called.
+"""
+eval_selector.py
+
+Move selection utilities for when you ALREADY have a candidate move list.
+
+This file is intended for “selection from a provided pool”, e.g.:
+- two-stage / beam-style ranking (fast eval for many moves, slow eval for top-K)
+- tie-breaking, sampling, and other selection policies
+
+It should NOT be responsible for generating all legal moves under a deadline;
+deadline-safe move generation/sampling belongs in `searchspace_reducer.py` + `move_picker.py`.
+"""
 
 from __future__ import annotations
 

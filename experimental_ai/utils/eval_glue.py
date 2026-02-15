@@ -1,14 +1,24 @@
+
+"""
+eval_glue.py
+
+Thin integration layer (“glue”) between the AEI engine loop and the bot’s move-selection code.
+
+This module should:
+- expose a simple, stable entry point like `get_eval_step_move(pos, deadline=...)`
+- translate engine concerns (time/deadline, perspective) into calls to lower-level utilities
+- avoid heavy logic: move sampling, bucket selection, and search live in other modules
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-import random
-import time
 from typing import Optional, Tuple
 
-from pyrimaa.board import Position
+from pyrimaa.board import Color, Position
 
-from .feature_extraction import DEFAULT_WEIGHTS, EvalWeights, score_move
-
+from .feature_extraction import DEFAULT_WEIGHTS, EvalWeights, evaluate_position
+from .move_picker import PickerConfig, pick_move_anytime
 
 Steps = Tuple[Tuple[int, int], ...]
 
@@ -19,13 +29,15 @@ class GlueConfig:
     weights: EvalWeights = DEFAULT_WEIGHTS
     perspective: Optional[int] = None  # None => pos.color (side to move)
 
-    # Performance: legal mobility is the expensive part in your current evaluator.
-    # For move-picking, you usually want this False until you add top-K refinement.
+    # Performance: legal mobility is expensive; keep False under time pressure
     legal_mobility: bool = False
 
     # Tie-breaking / variety
     random_ties: bool = True
     rng_seed: Optional[int] = None
+
+    # Search-space reducer controls
+    max_attempts_per_bucket: int = 96
 
 
 def get_eval_step_move(
@@ -35,63 +47,25 @@ def get_eval_step_move(
     deadline: float | None = None,
 ) -> tuple[Optional[Steps], Position]:
     """
-    Replacement for: steps, result = pos.get_rnd_step_move()
-
-    Returns:
-      (steps, result_position) like get_rnd_step_move().
-      If immobilized / no legal moves: (None, pos)
-
-    Strategy:
-      - enumerate full moves: pos.get_moves() -> {result_pos: steps}
-      - score each result_pos using feature_extraction.score_move(...)
-      - pick argmax
-
-    If deadline is provided, returns the best move found so far when time runs out.
+    Thin entry point used by the AEI engine.
+    Delegates the timed move sampling to move_picker.
     """
-    moves = pos.get_moves()
-    if not moves:
-        return None, pos
-
     perspective = pos.color if config.perspective is None else config.perspective
-    rng = random.Random(config.rng_seed)
 
-    best_score = float("-inf")
-    best: list[tuple[Steps, Position]] = []
-
-    # Note: moves is {Position: Steps}
-    for result_pos, steps in moves.items():
-        if deadline is not None and time.perf_counter() >= deadline:
-            break
-
-        s = score_move(
-            pos,
+    def score_fn(result_pos: Position, steps: Steps) -> float:
+        s = evaluate_position(
             result_pos,
-            steps,
-            perspective=perspective,
+            perspective,
             weights=config.weights,
+            legal_mobility=config.legal_mobility,
         )
+        # Tiny preference to use steps (avoid null-ish moves).
+        s -= 0.01 * max(0, 4 - len(steps))
+        return s
 
-        # If you later wire legal_mobility through, do it inside feature_extraction.evaluate_position().
-        # For now, GlueConfig.legal_mobility is kept for forward compatibility.
-
-        if s > best_score:
-            best_score = s
-            best = [(steps, result_pos)]
-        elif s == best_score:
-            best.append((steps, result_pos))
-
-        # If a single score computation ran long, don't start another one.
-        if deadline is not None and time.perf_counter() >= deadline:
-            break
-
-    if not best:
-        # Deterministic fallback: just pick the first item from a list snapshot.
-        result_pos, steps = list(moves.items())[0]
-        return steps, result_pos
-
-    if config.random_ties and len(best) > 1:
-        steps, result = rng.choice(best)
-    else:
-        steps, result = best[0]
-
-    return steps, result
+    picker_cfg = PickerConfig(
+        max_attempts_per_bucket=config.max_attempts_per_bucket,
+        random_ties=config.random_ties,
+        rng_seed=config.rng_seed,
+    )
+    return pick_move_anytime(pos, deadline=deadline, score_fn=score_fn, config=picker_cfg)
