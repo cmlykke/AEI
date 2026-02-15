@@ -15,6 +15,8 @@ from pyrimaa.board import (
     parse_short_pos,
 )
 
+from experimental_ai.utils.time_keeper import TimeKeeper
+
 
 class _ComThread(Thread):
     def __init__(self):
@@ -47,6 +49,13 @@ class AEIEngine:
         self.move_delay = None
         self.total_move_time = 0.0
         self.controller = controller
+
+        self.timekeeper = TimeKeeper(safety_margin_s=0.03)
+
+        self.tc_move_s: float | None = None
+        self.tc_turntime_s: float | None = None
+        self.reserve_s = {Color.GOLD: 0.0, Color.SILVER: 0.0}
+
         try:
             header = controller.messages.get(30)
         except Empty:
@@ -62,6 +71,10 @@ class AEIEngine:
     def newgame(self):
         self.position = Position(Color.GOLD, 4, BLANK_BOARD)
         self.insetup = True
+
+        self.tc_move_s = None
+        self.tc_turntime_s = None
+        self.reserve_s = {Color.GOLD: 0.0, Color.SILVER: 0.0}
 
     def setposition(self, side_str, pos_str):
         side = "gswb".find(side_str) % 2
@@ -90,8 +103,36 @@ class AEIEngine:
             self.strict_checks = value.lower().strip() not in ["false", "no", "0"]
         elif name == "delaymove":
             self.move_delay = float(value)
+        elif name == "tcmove" and value is not None:
+            self.tc_move_s = float(value)
+        elif name == "tcturntime" and value is not None:
+            self.tc_turntime_s = float(value)
+        elif name == "greserve" and value is not None:
+            self.reserve_s[Color.GOLD] = float(value)
+        elif name == "sreserve" and value is not None:
+            self.reserve_s[Color.SILVER] = float(value)
         elif name not in std_opts:
             self.log(f"Warning: Received unrecognized option, {name}")
+
+    def _compute_budget_s(self, side: int) -> float | None:
+        if self.tc_move_s is None:
+            return None
+        inc = float(self.tc_move_s)
+        r = float(self.reserve_s.get(side, 0.0))
+
+        reserve_fraction = 0.10
+        reserve_cap = 0.50
+
+        extra = min(r * reserve_fraction, reserve_cap)
+        if r < 0.15:
+            extra = min(extra, 0.05)
+
+        budget = inc + extra
+
+        if self.tc_turntime_s is not None:
+            budget = min(budget, float(self.tc_turntime_s))
+
+        return budget
 
     def makemove(self, move_str):
         try:
@@ -111,13 +152,16 @@ class AEIEngine:
             setup_moves = setup.to_placing_move()
             move_str = setup_moves[pos.color][2:]
         else:
-            steps, result = eval.get_eval_step_move(pos)
+            budget_s = self._compute_budget_s(pos.color)
+            self.timekeeper.start_move(budget_s)
+
+            steps, result = eval.get_eval_step_move(pos, deadline=self.timekeeper.deadline)
             if steps is None:
-                # we are immobilized, return an empty move
                 move_str = ""
                 self.log("Warning: move requested when immobilized.")
             else:
                 move_str = pos.steps_to_str(steps)
+
         if self.move_delay:
             time.sleep(self.move_delay)
         move_time = time.time() - start_time
