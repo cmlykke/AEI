@@ -33,18 +33,40 @@ def run_bot(bot, config, global_options):
     return engine
 
 
-def format_time(seconds):
-    hours = int(seconds / 3600)
+def format_time(seconds: float) -> str:
+    """
+    Human-friendly time with millisecond granularity for short spans.
+
+    Examples:
+      0.2   -> "200ms"
+      1.234 -> "1.234s"
+      62.5  -> "1m2.500s"
+    """
+    if seconds is None:
+        return "n/a"
+
+    if seconds < 0:
+        seconds = 0.0
+
+    # Milliseconds for sub-second values (useful for tctl like 200ms/3s)
+    if 0 <= seconds < 1:
+        ms = int(round(seconds * 1000))
+        return f"{ms}ms"
+
+    hours = int(seconds // 3600)
     seconds -= hours * 3600
-    minutes = int(seconds / 60)
+    minutes = int(seconds // 60)
     seconds -= minutes * 60
-    fmt_tm = []
+
+    parts = []
     if hours:
-        fmt_tm.append(f"{hours}h")
-    if minutes or fmt_tm:
-        fmt_tm.append(f"{minutes}m")
-    fmt_tm.append(f"{int(seconds)}s")
-    return "".join(fmt_tm)
+        parts.append(f"{hours}h")
+    if minutes or parts:
+        parts.append(f"{minutes}m")
+
+    # Keep milliseconds on the seconds field (controller computes floats anyway)
+    parts.append(f"{seconds:.3f}s")
+    return "".join(parts)
 
 
 def get_config(args=None):
@@ -279,6 +301,22 @@ def main(args=None):
                     f"{winner['name']} beat {loser['name']} because of "
                     f"{reason} playing side {'gs'[wside]}"
                 )
+
+                # Time usage / remaining (computed in controller; no extra engine I/O)
+                if game.side_tc[0] or game.side_tc[1]:
+                    g_used = format_time(game.time_used[0])
+                    s_used = format_time(game.time_used[1])
+                    g_left = (
+                        "n/a"
+                        if game.reserves[0] is None
+                        else format_time(max(0.0, game.reserves[0]))
+                    )
+                    s_left = (
+                        "n/a"
+                        if game.reserves[1] is None
+                        else format_time(max(0.0, game.reserves[1]))
+                    )
+                    print(f"Time: Gold used {g_used}, left {g_left} | Silver used {s_used}, left {s_left}")
 
                 # Record game result stats
                 winner["wins"] += 1

@@ -71,6 +71,9 @@ class Game:
         self.repetition_count = defaultdict(int)
         self.result = None
 
+        # Accumulated wall-clock "think time" per side (Gold=0, Silver=1)
+        self.time_used = [0.0, 0.0]
+
     def play(self):
         if self.result:
             raise RuntimeError("Tried to play a game that was already played.")
@@ -166,6 +169,9 @@ class Game:
             except socket.timeout:
                 pass
         moveend = time.time()
+
+        # Track per-side time usage (wall clock)
+        self.time_used[side] += moveend - movestart
 
         if tc and moveend > timeout:
             if tc.time_limit and endtime_limit < moveend:
