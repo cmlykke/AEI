@@ -72,8 +72,12 @@ class AEIEngine:
         self.position = Position(Color.GOLD, 4, BLANK_BOARD)
         self.insetup = True
 
-        self.tc_move_s = None
-        self.tc_turntime_s = None
+        # IMPORTANT:
+        # Do NOT reset tc_* here. The controller sets options (tcmove, tcturntime, etc.)
+        # and then sends "newgame". If we reset them here, we ignore time controls and
+        # will never use the available think time.
+        #
+        # Reserve values *can* be reset; the controller will keep updating greserve/sreserve.
         self.reserve_s = {Color.GOLD: 0.0, Color.SILVER: 0.0}
 
     def setposition(self, side_str, pos_str):

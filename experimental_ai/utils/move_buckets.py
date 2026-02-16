@@ -40,12 +40,20 @@ def _bit_to_index(bit: int) -> int:
     return (bit.bit_length() - 1) if bit else 0
 
 
+def _iter_bits(bits: int):
+    """Yield single-bit masks for each set bit in a bitboard int."""
+    while bits:
+        b = bits & -bits
+        bits ^= b
+        yield b
+
+
 def _trap_region_square_indices() -> FrozenSet[int]:
     """Trap squares + their adjacent squares."""
     sq: set[int] = set()
     for trap_bit in (TRAP_C3_BIT, TRAP_F3_BIT, TRAP_C6_BIT, TRAP_F6_BIT):
         sq.add(_bit_to_index(trap_bit))
-        for n_bit in neighbors_of(trap_bit):
+        for n_bit in _iter_bits(neighbors_of(trap_bit)):
             sq.add(_bit_to_index(n_bit))
     return frozenset(sq)
 
