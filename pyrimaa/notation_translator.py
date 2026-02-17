@@ -56,7 +56,9 @@ def translate_move_line_internal_to_db(line: str) -> str:
     rest = m.group("rest") or ""
 
     db_side = internal_side_to_db_side(side)
-    rest = rest.strip()
+
+    # Normalize *internal* whitespace within the move (so multiple spaces don't survive)
+    rest = " ".join(rest.split())
 
     if rest:
         return f"{num}{db_side} {rest}"
