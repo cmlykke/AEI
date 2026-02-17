@@ -8,6 +8,7 @@ from configparser import ConfigParser, NoOptionError
 
 from pyrimaa import aei
 from pyrimaa.game import Game
+from pyrimaa.notation_translator import translate_game_lines_internal_to_db
 from pyrimaa.util import TimeControl
 
 log = logging.getLogger("roundrobin")
@@ -316,7 +317,13 @@ def main(args=None):
                         if game.reserves[1] is None
                         else format_time(max(0.0, game.reserves[1]))
                     )
-                    print(f"Time: Gold used {g_used}, left {g_left} | Silver used {s_used}, left {s_left}")
+                    print(
+                        f"Time: Gold used {g_used}, left {g_left} | Silver used {s_used}, left {s_left}"
+                    )
+
+                # Print the complete game in "database" format (w/b headers), one move per line.
+                # This block is intentionally *just the movelist* so it can be copy/pasted directly.
+                print("\\n".join(translate_game_lines_internal_to_db(game.moves)))
 
                 # Record game result stats
                 winner["wins"] += 1
