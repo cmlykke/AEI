@@ -34,3 +34,6 @@ env/
 .vscode/
 .idea/
 *.iml
+
+# --- experimental_ai generated artifacts (do not commit) ---
+experimental_ai/artifacts/
