@@ -14,8 +14,7 @@ This module should only contain:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import FrozenSet, Optional
+from typing import FrozenSet
 
 from pyrimaa.board import (
     Color,
@@ -28,12 +27,7 @@ from pyrimaa.board import (
     neighbors_of,
 )
 
-
-@dataclass(frozen=True)
-class MoveConstraints:
-    """Constraints passed to searchspace_reducer.get_filtered_move()."""
-    only_pieces: Optional[FrozenSet[int]] = None
-    only_squares: Optional[FrozenSet[int]] = None
+from experimental_ai.common.search.constraints import MoveConstraints
 
 
 def _bit_to_index(bit: int) -> int:

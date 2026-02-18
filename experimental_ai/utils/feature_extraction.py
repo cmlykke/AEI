@@ -3,30 +3,13 @@ from __future__ import annotations
 """
 feature_extraction.py
 
-Position evaluation and feature engineering.
+Heuristic feature library for Arimaa positions.
 
 This module is responsible for:
 - extracting fast, mostly-local heuristic features from a `pyrimaa.board.Position`
-- combining those features into a scalar evaluation (“good for perspective”)
-- optionally exposing both cheap and expensive variants (e.g., legal-mobility on/off)
+- providing small, composable building blocks that different bots can mix-and-match
 
 It should NOT manage time controls or pick moves.
-"""
-
-"""
-Basic (fast-ish) feature extraction + move scoring for Arimaa positions.
-
-Design goals:
-- Works directly with `pyrimaa.board.Position` objects returned by `Position.get_moves()`
-- Each feature is implemented as its own function (as requested)
-- A simple linear evaluator combines features into a single move score
-
-Conventions:
-- `perspective` is the side we are scoring for (Color.GOLD or Color.SILVER).
-- Returned scores are "good for perspective": higher is better for that side.
-
-This is intentionally a *first pass* evaluator: it is heuristic and approximate.
-You can later tune weights, add phase scaling, and cache expensive computations.
 """
 
 
@@ -45,6 +28,21 @@ from pyrimaa.board import (
 )
 
 # --- Utilities ----------------------------------------------------------------
+
+
+def terminal_eval(pos: Position, perspective: int) -> float | None:
+    """
+    If the position is terminal, return +/-inf from `perspective`.
+    Otherwise return None.
+    """
+    end = pos.is_end_state()
+    if not end:
+        return None
+
+    # `is_end_state()` uses absolute winner:
+    #   +1 => GOLD wins, -1 => SILVER wins
+    winner_color = Color.GOLD if end == 1 else Color.SILVER
+    return float("inf") if winner_color == perspective else float("-inf")
 
 
 def _popcount(x: int) -> int:
