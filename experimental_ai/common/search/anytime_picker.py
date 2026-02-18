@@ -1,15 +1,14 @@
 """
-move_picker.py
+anytime_picker.py
 
 Deadline-aware (“anytime”) move picking.
 
 This module is responsible for:
 - spending a move budget safely: keep sampling candidate moves until `deadline`
-- using constraint buckets (from `move_buckets.py`) + `searchspace_reducer.get_filtered_move()`
-  to avoid full move enumeration (`pos.get_moves()`), which can be too slow under tight clocks
-- scoring sampled moves via a provided `score_fn` and returning the best-so-far when time runs out
+- sampling candidate moves with simple constraints (MoveConstraints)
+- scoring sampled moves via a provided `score_fn` and returning best-so-far
 
-It should NOT implement the evaluation function itself; it receives scoring as a callback.
+Policy (which buckets exist) belongs outside common; callers pass buckets explicitly.
 """
 
 from __future__ import annotations
@@ -17,12 +16,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 import random
 import time
-from typing import Callable, Optional, Tuple
+from typing import Callable, Sequence, Tuple
 
 from pyrimaa.board import Position
 
-from .move_buckets import MoveConstraints, build_constraint_buckets
-from .searchspace_reducer import FilterLimits, get_filtered_move
+from .constraints import MoveConstraints
+from .sampling import FilterLimits, get_filtered_move
 
 Steps = Tuple[Tuple[int, int], ...]
 ScoreFn = Callable[[Position, Steps], float]  # (result_pos, steps) -> score
@@ -44,9 +43,9 @@ def pick_move_anytime(
     *,
     deadline: float | None,
     score_fn: ScoreFn,
+    buckets: Sequence[MoveConstraints],
     config: PickerConfig = PickerConfig(),
-    buckets: Optional[list[MoveConstraints]] = None,
-) -> tuple[Optional[Steps], Position]:
+) -> tuple[Steps | None, Position]:
     """
     Deadline-aware move picker.
 
@@ -64,8 +63,8 @@ def pick_move_anytime(
             return None, pos
         return steps, result
 
-    if buckets is None:
-        buckets = build_constraint_buckets(pos)
+    if not buckets:
+        raise ValueError("buckets must be a non-empty sequence of MoveConstraints")
 
     best_score = float("-inf")
     best: list[tuple[Steps, Position]] = []

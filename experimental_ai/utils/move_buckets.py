@@ -9,7 +9,7 @@ to bias random move sampling toward more relevant areas without enumerating all 
 
 This module should only contain:
 - small, fast helpers to build constraint sets
-- no scoring and no time/deadline loops (that’s `move_picker.py`)
+- no scoring and no time/deadline loops (that’s `anytime_picker.py`)
 """
 
 from __future__ import annotations

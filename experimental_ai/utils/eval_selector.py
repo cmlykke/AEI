@@ -8,7 +8,7 @@ This file is intended for “selection from a provided pool”, e.g.:
 - tie-breaking, sampling, and other selection policies
 
 It should NOT be responsible for generating all legal moves under a deadline;
-deadline-safe move generation/sampling belongs in `searchspace_reducer.py` + `move_picker.py`.
+deadline-safe move generation/sampling belongs in `sampling.py` + `anytime_picker.py`.
 """
 
 from __future__ import annotations

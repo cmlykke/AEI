@@ -1,5 +1,5 @@
 """
-searchspace_reducer.py
+sampling.py
 
 Fast, deadline-aware move sampling with optional constraints.
 
@@ -9,7 +9,7 @@ This module provides utilities to quickly obtain *a legal move* that matches sim
 Key design goal:
 - be interruptible via `deadline` / `time_budget_s` so the engine can always move on time.
 
-Higher-level policies (bucket cycling, best-so-far selection) belong in `move_picker.py`.
+Higher-level policies (bucket cycling, best-so-far selection) belong in `anytime_picker.py`.
 """
 
 from __future__ import annotations

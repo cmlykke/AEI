@@ -4,7 +4,9 @@ import sys
 import time
 from queue import Empty, Queue
 from threading import Event, Thread
-import experimental_ai.utils.eval_glue as eval_glue
+
+from experimental_ai.common.time.time_keeper import TimeKeeper
+from experimental_ai.engines.heuristic.simple_engine_two.policy.move_policy import pick_move
 
 from pyrimaa.board import (
     BASIC_SETUP,
@@ -14,8 +16,6 @@ from pyrimaa.board import (
     Position,
     parse_short_pos,
 )
-
-from experimental_ai.utils.time_keeper import TimeKeeper
 
 
 class _ComThread(Thread):
@@ -162,7 +162,7 @@ class AEIEngine:
             budget_s = self._compute_budget_s(pos.color)
             self.timekeeper.start_move(budget_s)
 
-            steps, result = eval_glue.get_eval_step_move(pos, deadline=self.timekeeper.deadline)
+            steps, _result = pick_move(pos, deadline=self.timekeeper.deadline)
             if steps is None:
                 move_str = ""
                 self.log("Warning: move requested when immobilized.")
